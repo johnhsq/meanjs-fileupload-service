@@ -1,5 +1,8 @@
 'use strict';
 
+var   multiparty = require('connect-multiparty'),
+  multipartyMiddleware = multiparty();
+
 module.exports = function (app) {
   // Root routing
   var core = require('../controllers/core.server.controller');
@@ -12,4 +15,7 @@ module.exports = function (app) {
 
   // Define application route
   app.route('/*').get(core.renderIndex);
+
+  app.route('/api/uploads')
+    .post(multipartyMiddleware, core.uploads);
 };
