@@ -129,6 +129,7 @@ exports.uploads = function (req, res) {
 };
 ```
 At current point, you should be able to use the REST API to upload file. You can try postman in Chrome like the images below. Please make sure you set Key as "uploadedFile".
+
 <img src="https://raw.githubusercontent.com/johnhsq/meanjs-fileupload-service/master/img/Picture1.png" width="205">
 <img src="https://raw.githubusercontent.com/johnhsq/meanjs-fileupload-service/master/img/Picture2.png" width="205">
 
