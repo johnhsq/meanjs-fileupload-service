@@ -1,6 +1,10 @@
-Integration [ng-file-upload](https://github.com/danialfarid/ng-file-upload) with [MEAN.JS](http://meanjs.org/)
+Add [ng-file-upload](https://github.com/danialfarid/ng-file-upload) to [MEAN.JS](http://meanjs.org/)
 
-I am using MEAN.JS and Ng-File-Upload to add image upload feature to the Article module.
+===================
+Using MEAN.JS and ng-file-upload to enable image upload to the Article module.
+
+**Notes**: [MEAN.JS 0.4.2 (2015-11-11)](https://github.com/meanjs/mean/releases/tag/v0.4.2) [ng-file-upload 11.0.0 (2015-12-25)](https://github.com/danialfarid/ng-file-upload/releases/tag/11.0.0)
+
 
 ## Create File Upload Web Service
 I created REST API to upload files first and it will be used by Articles to upload images.
@@ -13,7 +17,6 @@ $ npm install connect-multiparty --save
 
 #### Change configuration
 * /config/env/default.js
-```
 Configure the file upload path. Make sure you create the folder first.
 ```js
 fileUpload: {
@@ -24,7 +27,6 @@ fileUpload: {
 }
 ```
 * /config/lib/multer.js
-```
 Create file upload filter
 ```js
 module.exports.imageUploadFileFilter = function (req, file, cb) {
@@ -37,7 +39,6 @@ module.exports.imageUploadFileFilter = function (req, file, cb) {
 
 #### Add Server Routes
 * /modules/core/server/routes/core.server.routes.js
-```
 Create Server Router, which will be the REST API endpoint.
 ```js
 app.route('/api/uploads')
@@ -46,7 +47,6 @@ app.route('/api/uploads')
 
 #### Add Server Controller
 * /modules/core/server/controllers/core.server.controller.js
-```
 Create Server Controller.
 ```js
 exports.uploads = function (req, res) {
@@ -138,28 +138,24 @@ $ bower install ng-file-upload --save
 ```
 #### Change configuration
 * /config/assets/default.js
-```
 Add ng-file-upload modules
 ```js
 'public/lib/ng-file-upload/ng-file-upload-shim.js',
 'public/lib/ng-file-upload/ng-file-upload.js'
 ```
 * /config/assets/production.js
-```
 Add minified version to production configuration
 ```js
 'public/lib/ng-file-upload/ng-file-upload-shim.min.js',
 'public/lib/ng-file-upload/ng-file-upload.min.js'
 ```
 * /modules/core/client/app/config.js
-```
 Inject ngFileUpload module to dependencies
 ```js
   var applicationModuleVendorDependencies = ['ngResource', 'ngAnimate', 'ngMessages', 'ui.router', 'ui.bootstrap', 'ui.utils', 'angularFileUpload', 'ngFileUpload'];
 ```
 #### Add image URL to Article Server Models
 * /modules/articles/server/models/article.server.model.js
-```
 Add image URL field to the Article Model
 ```js
 articleImageURL:{
@@ -170,7 +166,6 @@ articleImageURL:{
 ```
 #### Change Article Views
 * /modules/articles/client/views/create-article.client.view.html
-```
 Add Featured Image to the form
 ```html
 <div class="form-group" show-errors>
@@ -197,7 +192,6 @@ Add Featured Image to the form
 </div>
 ```
 * /modules/articles/client/views/edit-article.client.view.html
-```
 Add Featured Image to the form
 ```html
 <div class="form-group" show-errors>
@@ -218,20 +212,17 @@ Add Featured Image to the form
 </div>
 ```
 * /modules/articles/client/views/list-articles.client.view.html
-```
 Show Featured Image in the view
 ```html
 <img ng-src="{{article.articleImageURL}}" height="100" />
 ```
 * /modules/articles/client/views/view-article.client.view.html
-```
 Show Featured Image in the view
 ```html
 <img ng-src="{{article.articleImageURL}}" height="100" />
 ```
 #### Change Article Client Controller
 * /modules/articles/client/controllers/articles.client.controller.js
-```
 Inject Upload and $timeout services to the Article Controller
 ```js
 $scope.uploadFiles = function(file, errFiles) {
