@@ -1,324 +1,312 @@
-[![MEAN.JS Logo](http://meanjs.org/img/logo-small.png)](http://meanjs.org/)
+Integration [ng-file-upload](https://github.com/danialfarid/ng-file-upload) with [MEAN.JS](http://meanjs.org/)
 
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/meanjs/mean?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/meanjs/mean.svg?branch=master)](https://travis-ci.org/meanjs/mean)
-[![Dependencies Status](https://david-dm.org/meanjs/mean.svg)](https://david-dm.org/meanjs/mean)
-[![Coverage Status](https://coveralls.io/repos/meanjs/mean/badge.svg?branch=master&service=github)](https://coveralls.io/github/meanjs/mean?branch=master)
+I am using MEAN.JS and Ng-File-Upload to add image upload feature to the Article module.
 
-MEAN.JS is a full-stack JavaScript open-source solution, which provides a solid starting point for [MongoDB](http://www.mongodb.org/), [Node.js](http://www.nodejs.org/), [Express](http://expressjs.com/), and [AngularJS](http://angularjs.org/) based applications. The idea is to solve the common issues with connecting those frameworks, build a robust framework to support daily development needs, and help developers use better practices while working with popular JavaScript components.
+## Create File Upload Web Service
+I created REST API to upload files first and it will be used by Articles to upload images.
 
-## Before You Begin
-Before you begin we recommend you read about the basic building blocks that assemble a MEAN.JS application:
-* MongoDB - Go through [MongoDB Official Website](http://mongodb.org/) and proceed to their [Official Manual](http://docs.mongodb.org/manual/), which should help you understand NoSQL and MongoDB better.
-* Express - The best way to understand express is through its [Official Website](http://expressjs.com/), which has a [Getting Started](http://expressjs.com/starter/installing.html) guide, as well as an [ExpressJS Guide](http://expressjs.com/guide/error-handling.html) guide for general express topics. You can also go through this [StackOverflow Thread](http://stackoverflow.com/questions/8144214/learning-express-for-node-js) for more resources.
-* AngularJS - Angular's [Official Website](http://angularjs.org/) is a great starting point. You can also use [Thinkster Popular Guide](http://www.thinkster.io/), and the [Egghead Videos](https://egghead.io/).
-* Node.js - Start by going through [Node.js Official Website](http://nodejs.org/) and this [StackOverflow Thread](http://stackoverflow.com/questions/2353818/how-do-i-get-started-with-node-js), which should get you going with the Node.js platform in no time.
-
-
-## Prerequisites
-Make sure you have installed all of the following prerequisites on your development machine:
-* Node.js - [Download & Install Node.js](https://nodejs.org/en/download/) and the npm package manager. If you encounter any problems, you can also use this [GitHub Gist](https://gist.github.com/isaacs/579814) to install Node.js.
-  * Node v5 IS NOT SUPPORTED AT THIS TIME! 
-* MongoDB - [Download & Install MongoDB](http://www.mongodb.org/downloads), and make sure it's running on the default port (27017).
-* Ruby - [Download & Install Ruby](https://www.ruby-lang.org/en/documentation/installation/)
-* Bower - You're going to use the [Bower Package Manager](http://bower.io/) to manage your front-end packages. Make sure you've installed Node.js and npm first, then install bower globally using npm:
-
+#### Install Packages
+* Server side, I use connect-multiparty. Multer is already included in MEAN.JS
 ```bash
-$ npm install -g bower
+$ npm install connect-multiparty --save
 ```
 
-* Grunt - You're going to use the [Grunt Task Runner](http://gruntjs.com/) to automate your development process. Make sure you've installed Node.js and npm first, then install grunt globally using npm:
+#### Change configuration
+* /config/env/default.js
+```
+Configure the file upload path. Make sure you create the folder first.
+```js
+fileUpload: {
+  dest: './modules/core/client/img/uploads/', // file upload destination path
+  limits: {
+    fileSize: 10*1024*1024 // Max file size in bytes (10 MB)
+  }
+}
+```
+* /config/lib/multer.js
+```
+Create file upload filter
+```js
+module.exports.imageUploadFileFilter = function (req, file, cb) {
+  if (file.mimetype !== 'image/png' && file.mimetype !== 'image/jpg' && file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/gif') {
+    return cb(new Error('Only image files are allowed!'), false);
+  }
+  cb(null, true);
+};
+```
 
+#### Add Server Routes
+* /modules/core/server/routes/core.server.routes.js
+```
+Create Server Router, which will be the REST API endpoint.
+```js
+app.route('/api/uploads')
+  .post(multipartyMiddleware, core.uploads);
+```
+
+#### Add Server Controller
+* /modules/core/server/controllers/core.server.controller.js
+```
+Create Server Controller.
+```js
+exports.uploads = function (req, res) {
+  // console.log('req.headers.content-type:'+req.headers['content-type']); //must be multipart/form-data
+  // console.log('req.files.uploadedFile: '+req.files.uploadedFile); //file object
+  // console.log('req.files.uploadedFile.fieldname: '+req.files.uploadedFile.fieldName);// "uploadedFile"
+  // console.log('req.files.uploadedFile.name: '+req.files.uploadedFile.name); // original filename
+  // console.log('req.files.uploadedFile.originalFilename: '+req.files.uploadedFile.originalFilename); // orininal Filename
+  // console.log('req.files.uploadedFile.type: '+req.files.uploadedFile.type); //image/jpeg
+  // console.log('req.files.uploadedFile.size: '+req.files.uploadedFile.size); // file size
+  // console.log('req.body.testkey: '+req.body.testkey); // submited form
+
+  var file=req.files.uploadedFile;
+  var user = req.user;
+  var message = null;
+
+  //the target folder is ./modules/core/client/img/uploads/base64(username)/
+  var userEncode = new Buffer(user.username).toString('base64');
+  var destFolder = path.join(path.resolve('./'),config.uploads.fileUpload.dest,userEncode);
+  var newFilename = Date.now()+"-"+file.originalFilename;
+  var destFile = destFolder+"/"+newFilename;
+  //var destURL = req.protocol + '://' + req.get('host') + config.uploads.fileUpload.dest+userEncode+"/"+Date.now()+".jpg";
+  var destURL = config.uploads.fileUpload.dest+userEncode+"/"+newFilename;
+
+  //config multer, somehow the diskStorage() is not working
+  var storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, destFolder);
+    },
+    filename: function (req, file, cb) {
+      cb(null, file.originalname + '-' + Date.now());
+    }
+  });
+
+  var upload = multer({ storage : storage}).single('uploadedFile');
+  // Filtering to upload only images
+  upload.fileFilter = require(path.resolve('./config/lib/multer')).imageUploadFileFilter;
+
+  // upload file
+  upload(req,res,function (err) {
+    if(err) {
+      return res.status(400).send({
+        message: 'Error occurred while uploading profile picture'
+      });
+    }else{
+      // For some reason, the diskStorage function of Multer doesn't work.
+      // The following code is to move the file to the destination folder.
+      var stat =null;
+      try {
+        stat = fs.statSync(destFolder);
+      } catch (err) {
+        fs.mkdirSync(destFolder);
+      }
+      if (stat && !stat.isDirectory()) {
+        throw new Error('Directory cannot be created because an inode of a different type exists at "' + destFolder + '"');
+      } else {
+        fs.rename(file.path, destFile, function(err) {
+          if (err) throw err;
+          // delete the temporary file, so that the explicitly set temporary upload dir does not get filled with unwanted files
+          fs.unlink(file.path, function() {
+            if (err) {
+                throw err;
+            }else{
+              return res.status(200).send({
+                uploadedURL: destURL,
+                uploadedFile: destFile,
+                file: JSON.stringify(req.files),
+                message: 'File is uploaded to ' + destURL
+              });
+            }
+          });
+        });
+      }
+    }
+  });
+};
+```
+At current point, you should be able to use the REST API to upload file. You can try postman in Chrome like the images below. Please make sure you set Key as "uploadedFile".
+<img src="https://raw.githubusercontent.com/johnhsq/meanjs-fileupload-service/master/img/Picture1.png" width="205">
+<img src="https://raw.githubusercontent.com/johnhsq/meanjs-fileupload-service/master/img/Picture2.png" width="205">
+
+## Add Image Feature to Article
+I use ng-file-upload for the client side file upload.
+
+#### Install Packages
+* Install ng-file-upload
 ```bash
-$ npm install -g grunt-cli
+$ bower install ng-file-upload --save
 ```
-
-* Sass - You're going to use [Sass](http://sass-lang.com/) to compile CSS during your grunt task. Make sure you have ruby installed, and then install Sass using gem install:
-
-```bash
-$ gem install sass
+#### Change configuration
+* /config/assets/default.js
 ```
-
-```bash
-$ npm install -g grunt-cli
+Add ng-file-upload modules
+```js
+'public/lib/ng-file-upload/ng-file-upload-shim.js',
+'public/lib/ng-file-upload/ng-file-upload.js'
 ```
-
-* Gulp - (Optional) You may use Gulp for Live Reload, Linting, and SASS or LESS.
-
-```bash
-$ npm install gulp -g
+* /config/assets/production.js
 ```
-
-## Downloading MEAN.JS
-There are several ways you can get the MEAN.JS boilerplate:
-
-### Cloning The GitHub Repository
-The recommended way to get MEAN.js is to use git to directly clone the MEAN.JS repository:
-
-```bash
-$ git clone https://github.com/meanjs/mean.git meanjs
+Add minified version to production configuration
+```js
+'public/lib/ng-file-upload/ng-file-upload-shim.min.js',
+'public/lib/ng-file-upload/ng-file-upload.min.js'
 ```
-
-This will clone the latest version of the MEAN.JS repository to a **meanjs** folder.
-
-### Downloading The Repository Zip File
-Another way to use the MEAN.JS boilerplate is to download a zip copy from the [master branch on GitHub](https://github.com/meanjs/mean/archive/master.zip). You can also do this using `wget` command:
-
-```bash
-$ wget https://github.com/meanjs/mean/archive/master.zip -O meanjs.zip; unzip meanjs.zip; rm meanjs.zip
+* /modules/core/client/app/config.js
 ```
-
-Don't forget to rename **mean-master** after your project name.
-
-### Yo Generator
-Another way would be to use the [Official Yo Generator](http://meanjs.org/generator.html), which generates a copy of the MEAN.JS 0.4.x boilerplate and supplies an application generator to ease your daily development cycles.
-
-## Quick Install
-Once you've downloaded the boilerplate and installed all the prerequisites, you're just a few steps away from starting to develop your MEAN application.
-
-The first thing you should do is install the Node.js dependencies. The boilerplate comes pre-bundled with a package.json file that contains the list of modules you need to start your application. To learn more about the modules installed visit the NPM & Package.json section.
-
-To install Node.js dependencies you're going to use npm again. In the application folder run this in the command-line:
-
-```bash
-$ npm install
+Inject ngFileUpload module to dependencies
+```js
+  var applicationModuleVendorDependencies = ['ngResource', 'ngAnimate', 'ngMessages', 'ui.router', 'ui.bootstrap', 'ui.utils', 'angularFileUpload', 'ngFileUpload'];
 ```
-
-This command does a few things:
-* First it will install the dependencies needed for the application to run.
-* If you're running in a development environment, it will then also install development dependencies needed for testing and running your application.
-* Finally, when the install process is over, npm will initiate a bower install command to install all the front-end modules needed for the application
-
-## Running Your Application
-After the install process is over, you'll be able to run your application using Grunt, just run grunt default task:
-
+#### Add image URL to Article Server Models
+* /modules/articles/server/models/article.server.model.js
 ```
-$ grunt
+Add image URL field to the Article Model
+```js
+articleImageURL:{
+  type: String,
+  default: '',
+  trim: true
+},
 ```
-
-Your application should run on port 3000 with the *development* environment configuration, so in your browser just go to [http://localhost:3000](http://localhost:3000)
-
-That's it! Your application should be running. To proceed with your development, check the other sections in this documentation.
-If you encounter any problems, try the Troubleshooting section.
-
-* explore `config/env/development.js` for development environment configuration options
-
-### Running in Production mode
-To run your application with *production* environment configuration, execute grunt as follows:
-
-```bash
-$ grunt prod
+#### Change Article Views
+* /modules/articles/client/views/create-article.client.view.html
 ```
-
-* explore `config/env/production.js` for production environment configuration options
-
-### Running with User Seed
-To have default account(s) seeded at runtime:
-
-In Development:
-```bash
-MONGO_SEED=true grunt
+Add Featured Image to the form
+```html
+<div class="form-group" show-errors>
+  <label for="title">Featured Image </label>
+  <button type="button" class="btn btn-secondary" ng-show="uploadedFile == null" type="file"
+    ngf-select="uploadFiles($file, $invalidFiles)"
+    ng-model="uploadedFile" name="file" ngf-model-invalid="errorFiles"
+    accept="image/*" ngf-max-size="1MB">
+    Select Featured Image</button>
+  <div class="text-center">
+    <img ng-show="articleForm.file.$valid" ngf-thumbnail="uploadedFile" class="thumb">
+  </div>
+  <div class="text-center">
+    <div class="progress" ng-show="uploadedFile.progress >= 0">
+              <div style="width:{{uploadedFile.progress}}%"
+                  ng-bind="uploadedFile.progress + '%'"></div>
+    </div>
+  </div>
+  <div class="text-center">
+    <button type="button" class="btn btn-secondary" ng-click="uploadedFile = null" ng-show="uploadedFile">Remove</button>
+  </div>
+  <div class="alert alert-danger" ng-show="articleForm.file.$error.maxSize">File too large
+               {{errorFiles[0].size / 1000000|number:1}}MB: max 1M</div>
+</div>
 ```
-It will try to seed the users 'user' and 'admin'. If one of the user already exists, it will display an error message on the console. Just grab the passwords from the console.
-
-In Production:
-```bash
-MONGO_SEED=true grunt prod
+* /modules/articles/client/views/edit-article.client.view.html
 ```
-This will seed the admin user one time if the user does not already exist. You have to copy the password from the console and save it.
-
-### Running with TLS (SSL)
-Application will start by default with secure configuration (SSL mode) turned on and listen on port 8443.
-To run your application in a secure manner you'll need to use OpenSSL and generate a set of self-signed certificates. Unix-based users can use the following command:
-
-```bash
-$ sh ./scripts/generate-ssl-certs.sh
+Add Featured Image to the form
+```html
+<div class="form-group" show-errors>
+  <label for="title">Featured Image </label>
+  <button ng-show="article.articleImageURL==null || article.articleImageURL==''" type="button" class="btn btn-secondary" type="file"
+    ngf-select="uploadFiles($file, $invalidFiles)"
+    ng-model="article.articleImageURL" name="file" ngf-model-invalid="errorFiles"
+    accept="image/*" ngf-max-size="1MB">
+    Select Featured Image</button>
+  <div class="text-center" ng-show="article.articleImageURL" >
+    <img ng-src="{{article.articleImageURL}}" ngf-thumbnail="article.articleImageURL" class="thumb"/>
+  </div>
+  <div class="text-center" ng-show="article.articleImageURL">
+    <button type="button" class="btn btn-secondary" ng-click="article.articleImageURL = null" >Remove</button>
+  </div>
+  <div class="alert alert-danger" ng-show="articleForm.file.$error.maxSize">File too large
+               {{errorFiles[0].size / 1000000|number:1}}MB: max 1M</div>
+</div>
 ```
-
-Windows users can follow instructions found [here](http://www.websense.com/support/article/kbarticle/How-to-use-OpenSSL-and-Microsoft-Certification-Authority).
-After you've generated the key and certificate, place them in the *config/sslcerts* folder.
-
-Finally, execute grunt's prod task `grunt prod`
-* enable/disable SSL mode in production environment change the `secure` option in `config/env/production.js`
-
-
-## Testing Your Application
-You can run the full test suite included with MEAN.JS with the test task:
-
-```bash
-$ grunt test
+* /modules/articles/client/views/list-articles.client.view.html
 ```
-
-This will run both the server-side tests (located in the app/tests/ directory) and the client-side tests (located in the public/modules/*/tests/).
-
-To execute only the server tests, run the test:server task:
-
-```bash
-$ grunt test:server
+Show Featured Image in the view
+```html
+<img ng-src="{{article.articleImageURL}}" height="100" />
 ```
-
-And to run only the client tests, run the test:client task:
-
-```bash
-$ grunt test:client
+* /modules/articles/client/views/view-article.client.view.html
 ```
-
-## Running your application with Gulp
-
-After the install process, you can easily run your project with:
-
-```bash
-$ gulp
+Show Featured Image in the view
+```html
+<img ng-src="{{article.articleImageURL}}" height="100" />
 ```
-or
-
-```bash
-$ gulp default
+#### Change Article Client Controller
+* /modules/articles/client/controllers/articles.client.controller.js
 ```
+Inject Upload and $timeout services to the Article Controller
+```js
+$scope.uploadFiles = function(file, errFiles) {
+    $scope.uploadedFile = file;
+    $scope.errFile = errFiles && errFiles[0];
+    if (file) {
+        file.upload = Upload.upload({
+            url: '/api/uploads',
+            data: {uploadedFile: file}
+        });
 
-The server is now running on http://localhost:3000 if you are using the default settings. 
+        file.upload.then(function (response) {
+            console.log('File is successfully uploaded to ' + response.data.uploadedURL);
+            $scope.articleImageURL = response.data.uploadedURL;
+            $timeout(function () {
+                file.result = response.data;
+            });
+        }, function (response) {
+            if (response.status > 0)
+                $scope.errorMsg = response.status + ': ' + response.data;
+        }, function (evt) {
+            file.progress = Math.min(100, parseInt(100.0 *
+                                     evt.loaded / evt.total));
+        });
+    }
+};
 
-### Running Gulp Development Environment
 
-Start the development environment with:
+// Create new Article
+$scope.create = function (isValid) {
+  $scope.error = null;
 
-```bash
-$ gulp dev
+  if (!isValid) {
+    $scope.$broadcast('show-errors-check-validity', 'articleForm');
+
+    return false;
+  }
+
+  // Create new Article object
+  var article = new Articles({
+    title: $scope.title,
+    content: $scope.content,
+    articleImageURL: $scope.articleImageURL
+  });
+
+  // Redirect after save
+  article.$save(function (response) {
+    $location.path('articles/' + response._id);
+
+    // Clear form fields
+    $scope.title = '';
+    $scope.content = '';
+    $scope.articleImageURL = '';
+  }, function (errorResponse) {
+    $scope.error = errorResponse.data.message;
+  });
+};
+
+// Update existing Article
+$scope.update = function (isValid) {
+  $scope.error = null;
+
+  if (!isValid) {
+    $scope.$broadcast('show-errors-check-validity', 'articleForm');
+
+    return false;
+  }
+
+  var article = $scope.article;
+  article.articleImageURL = $scope.articleImageURL;
+
+  article.$update(function () {
+    $location.path('articles/' + article._id);
+  }, function (errorResponse) {
+    $scope.error = errorResponse.data.message;
+  });
+};
 ```
-
-### Running in Production mode
-To run your application with *production* environment configuration, execute gulp as follows:
-
-```bash
-$ gulp prod
-```
-
-### Testing Your Application with Gulp
-Using the full test suite included with MEAN.JS with the test task:
-
-### Run all tests
-```bash
-$ gulp test
-```
-
-### Run server tests
-```bash
-gulp test:server
-```
-
-### Run client tests
-```bash
-gulp test:client
-```
-
-### Run e2e tests
-```bash
-gulp test:e2e
-```
-
-## Development and deployment With Docker
-
-* Install [Docker](https://docs.docker.com/installation/#installation)
-* Install [Compose](https://docs.docker.com/compose/install/)
-
-* Local development and testing with compose:
-```bash
-$ docker-compose up
-```
-
-* Local development and testing with just Docker:
-```bash
-$ docker build -t mean .
-$ docker run -p 27017:27017 -d --name db mongo
-$ docker run -p 3000:3000 --link db:db_1 mean
-$
-```
-
-* To enable live reload, forward port 35729 and mount /app and /public as volumes:
-```bash
-$ docker run -p 3000:3000 -p 35729:35729 -v /Users/mdl/workspace/mean-stack/mean/public:/home/mean/public -v /Users/mdl/workspace/mean-stack/mean/app:/home/mean/app --link db:db_1 mean
-```
-
-## Getting Started With MEAN.JS
-You have your application running, but there is a lot of stuff to understand. We recommend you go over the [Official Documentation](http://meanjs.org/docs.html).
-In the docs we'll try to explain both general concepts of MEAN components and give you some guidelines to help you improve your development process. We tried covering as many aspects as possible, and will keep it updated by your request. You can also help us develop and improve the documentation by checking out the *gh-pages* branch of this repository.
-
-## Community
-* Use the [Official Website](http://meanjs.org) to learn about changes and the roadmap.
-* Join #meanjs on freenode.
-* Discuss it in the new [Google Group](https://groups.google.com/d/forum/meanjs)
-* Ping us on [Twitter](http://twitter.com/meanjsorg) and [Facebook](http://facebook.com/meanjs)
-
-## Contributing
-We welcome pull requests from the community! Just be sure to read the [contributing](https://github.com/meanjs/mean/blob/master/CONTRIBUTING.md) doc to get started.
-
-## Deploying To Cloud Foundry
-
-Cloud Foundry is an open source platform-as-a-service (PaaS).  The MEANJS project
-can easily be deployed to any Cloud Foundry instance.  The easiest way to deploy the
-MEANJS project to Cloud Foundry is to use a public hosted instance.  The two most popular
-instances are [Pivotal Web Services](https://run.pivotal.io/) and
-[IBM Bluemix](https://bluemix.net).  Both provide free trials and support pay-as-you-go models
-for hosting applications in the cloud.  After you have an account follow the below steps to deploy MEANJS.
-
-* Install the [Cloud Foundry command line tools](http://docs.cloudfoundry.org/devguide/installcf/install-go-cli.html).
-* Now you need to log into Cloud Foundry from the Cloud Foundry command line.
-  *  If you are using Pivotal Web Services run `$ cf login -a api.run.pivotal.io`.
-  *  If you are using IBM Bluemix run `$ cf login -a api.ng.bluemix.net`.
-* Create a Mongo DB service.
-+  *  If you are using Pivotal Web Services run `$ cf create-service mongolab sandbox mean-mongo`
-+  *  If you are using IBM Bluemix run `$ cf create-service mongodb 100 mean-mongo`
-* Clone the GitHub repo for MEANJS if you have not already done so
-  * `$ git clone https://github.com/meanjs/mean.git && cd mean`
-* Run `$ npm install`
-* Run the Grunt Build task to build the optimized JavaScript and CSS files
-  * `$ grunt build`
-* Deploy MEANJS to Cloud Foundry
-  * `$ cf push`
-
-After `cf push` completes you will see the URL to your running MEANJS application 
-(your URL will be different).
-
-    requested state: started
-    instances: 1/1
-    usage: 128M x 1 instances
-    urls: mean-humbler-frappa.mybluemix.net
-
-Open your browser and go to that URL and your should see your MEANJS app running!
-
-###  Deploying MEANJS To IBM Bluemix
-IBM Bluemix is a Cloud Foundry based PaaS.  By clicking the button below you can signup for Bluemix and deploy
-a working copy of MEANJS to the cloud without having to do the steps above.
-
-[![Deploy to Bluemix](https://bluemix.net/deploy/button.png)](https://bluemix.net/deploy?repository=https%3A%2F%2Fgithub.com%2Fmeanjs%2Fmean)
-
-After the deployment is finished you will be left with a copy of the MEANJS code in your own private Git repo
-in Bluemix complete with a pre-configured build and deploy pipeline.  Just clone the Git repo, make your changes, and
-commit them back.  Once your changes are committed, the build and deploy pipeline will run automatically deploying
-your changes to Bluemix.
-
-## Credits
-Inspired by the great work of [Madhusudhan Srinivasa](https://github.com/madhums/)
-The MEAN name was coined by [Valeri Karpov](http://blog.mongodb.org/post/49262866911/the-mean-stack-mongodb-expressjs-angularjs-and)
-
-## License
-(The MIT License)
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

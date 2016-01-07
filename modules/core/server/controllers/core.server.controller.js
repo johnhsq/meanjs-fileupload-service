@@ -138,6 +138,4 @@ exports.uploads = function (req, res) {
       }
     }
   });
-
-
 };
