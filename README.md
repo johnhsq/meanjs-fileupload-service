@@ -1,5 +1,4 @@
 Add [ng-file-upload](https://github.com/danialfarid/ng-file-upload) to [MEAN.JS](http://meanjs.org/)
-
 ===================
 Using MEAN.JS and ng-file-upload to enable image upload to the Article module.
 
@@ -17,6 +16,7 @@ $ npm install connect-multiparty --save
 
 #### Change configuration
 * /config/env/default.js
+
 Configure the file upload path. Make sure you create the folder first.
 ```js
 fileUpload: {
