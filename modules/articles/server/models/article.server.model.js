@@ -14,6 +14,11 @@ var ArticleSchema = new Schema({
     type: Date,
     default: Date.now
   },
+  articleImageURL:{
+    type: String,
+    default: '',
+    trim: true
+  },
   title: {
     type: String,
     default: '',

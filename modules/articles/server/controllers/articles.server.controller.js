@@ -41,6 +41,7 @@ exports.update = function (req, res) {
 
   article.title = req.body.title;
   article.content = req.body.content;
+  article.articleImageURL = req.body.articleImageURL;
 
   article.save(function (err) {
     if (err) {

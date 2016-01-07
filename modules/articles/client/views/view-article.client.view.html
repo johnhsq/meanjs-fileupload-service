@@ -2,6 +2,9 @@
   <div class="page-header">
     <h1 ng-bind="article.title"></h1>
   </div>
+  <div>
+    <img ng-src="{{article.articleImageURL}}" id="photo-id" height="100" />
+  </div>
   <div class="pull-right" ng-show="authentication.user._id == article.user._id">
     <a class="btn btn-primary" ui-sref="articles.edit({articleId: article._id})">
       <i class="glyphicon glyphicon-edit"></i>

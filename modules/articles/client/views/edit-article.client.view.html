@@ -12,6 +12,24 @@
             <p class="help-block error-text" ng-message="required">Article title is required.</p>
           </div>
         </div>
+
+        <div class="form-group" show-errors>
+          <label for="title">Featured Image </label>
+          <button ng-show="article.articleImageURL==null || article.articleImageURL==''" type="button" class="btn btn-secondary" type="file"
+            ngf-select="uploadFiles($file, $invalidFiles)"
+            ng-model="article.articleImageURL" name="file" ngf-model-invalid="errorFiles"
+            accept="image/*" ngf-max-size="1MB">
+            Select Featured Image</button>
+          <div class="text-center" ng-show="article.articleImageURL" >
+            <img ng-src="{{article.articleImageURL}}" ngf-thumbnail="article.articleImageURL" class="thumb"/>
+          </div>
+          <div class="text-center" ng-show="article.articleImageURL">
+            <button type="button" class="btn btn-secondary" ng-click="article.articleImageURL = null" >Remove</button>
+          </div>
+          <div class="alert alert-danger" ng-show="articleForm.file.$error.maxSize">File too large
+                       {{errorFiles[0].size / 1000000|number:1}}MB: max 1M</div>
+        </div>
+
         <div class="form-group">
           <label for="content">Content</label>
           <textarea name="content" ng-model="article.content" id="content" class="form-control" cols="30" rows="10" placeholder="Content"></textarea>
